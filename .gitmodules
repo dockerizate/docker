@@ -1,0 +1,6 @@
+[submodule "single-page-app"]
+	path = single-page-app
+	url = https://github.com/dockerizate/single-page-app
+[submodule "restful-api"]
+	path = restful-api
+	url = https://github.com/dockerizate/restful-api
