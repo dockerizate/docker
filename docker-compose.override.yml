@@ -1,1 +1,6 @@
 version: '3'
+services:
+  nginx:
+    volumes:
+      - ./nginx/nginx-app.template:/etc/nginx/conf.d/nginx-app.template
+      - ./nginx/certs:/etc/ssl/certs

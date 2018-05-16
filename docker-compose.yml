@@ -5,6 +5,7 @@ services:
     build: ./restful-api
     ports:
       - "3000"
+    restart: unless-stopped
   nginx:
     container_name: webserver
     build:
@@ -12,10 +13,10 @@ services:
       dockerfile: ./nginx/Dockerfile
     depends_on:
       - restful_api
-    volumes:
-      - ./nginx/nginx-app.template:/etc/nginx/conf.d/nginx-app.template
     ports:
       - "80:80"
+      - "443:443"
     environment:
       - NGINX_PORT=80
     command: /bin/sh -c "envsubst '$$NGINX_PORT' < /etc/nginx/conf.d/nginx-app.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    restart: unless-stopped

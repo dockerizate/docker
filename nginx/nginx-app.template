@@ -1,76 +1,164 @@
-server {
-  listen       80;
-  server_name  api.dev.local;
+# Based on:
+# https://www.netguru.co/codestories/nginx-tutorial-performance
+# https://www.netguru.co/codestories/nginx-tutorial-ssl-setup
+# https://www.digitalocean.com/community/tutorials/understanding-nginx-http-proxying-load-balancing-buffering-and-caching
+# https://bjornjohansen.no/redirect-to-https-with-nginx
 
-  # # general configs
-  # keepalive_timeout    30;
-  # listen               127.0.0.1:443 ssl;
-  # server_name          api.example.com;
+# DOESNT WORK ON THIS FILE
+# worker_processes auto; # use all the CPUs
+# worker_rlimit_nofile 2048; # Changes the limit on the maximum number of open files (RLIMIT_NOFILE) for worker processes. worker_connections * 2
+# worker_connections 1024;   # Sets the maximum number of simultaneous connections that can be opened by a worker process.
 
-  # # ssl configs
-  # ssl_certificate      /path/to/api.crt;
-  # ssl_certificate_key  /path/to/api.key;
-  # ssl_session_cache    shared:SSL:10m;
-  # ssl_session_timeout  10m;
+gzip on;               # enable gzip
+gzip_http_version 1.1; # turn on gzip for http 1.1 and higher
+gzip_disable "msie6";  # IE 6 had issues with gzip
+gzip_comp_level 5;     # inc compresion level, and CPU usage
+gzip_min_length 120;   # minimal weight to gzip file (files below this in bytes are not compressed)
+gzip_proxied any;      # enable gzip for proxied requests (e.g. CDN)
+gzip_buffers 16 8k;    # compression buffers (if we exceed this value, disk will be used instead of RAM)
+gzip_vary on;          # add header Vary Accept-Encoding
 
-  # # logs paths
-  # access_log /path/to/access.log;
-  # error_log  /path/to/error.log;
+# define files which should be compressed
+gzip_types text/plain;
+gzip_types text/css;
+gzip_types application/javascript;
+gzip_types application/json;
+gzip_types application/manifest+json;
+gzip_types application/vnd.ms-fontobject;
+gzip_types application/x-font-ttf;
+gzip_types font/opentype;
+gzip_types image/svg+xml;
+gzip_types image/x-icon;
 
-  location / {
-    proxy_pass                http://restful_api:3000;
-    proxy_http_version        1.1;
-    proxy_set_header    Host  $host;
-    # proxy_set_header Host      api.dev.local;
+  # tcp_nodelay on;     # sets TCP_NODELAY flag, used on keepalive connections
 
-    # handle OPTIONS requests
-    # @note: don't try to DRY out this "if" block, or you're gonna have a bad time.
-    # @see: http://wiki.nginx.org/IfIsEvil
-    if ($request_method = 'OPTIONS') {
-      add_header 'Access-Control-Allow-Credentials' 'true';
-      add_header 'Access-Control-Allow-Headers'     'Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,Keep-Alive,X-Requested-With,If-Modified-Since';
-      add_header 'Access-Control-Allow-Methods'     'GET, DELETE, OPTIONS, POST, PUT';
-      add_header 'Access-Control-Allow-Origin'      'http://app.dev.local';
-      add_header 'Access-Control-Max-Age'           2592000;
-      add_header 'Content-Length'                   0;
-      # add_header 'Content-Type'                     'text/plain charset=UTF-8';
-      return 204;
-    }
+  # ssl on;
+  ssl_certificate     /etc/ssl/certs/cert.pem;
+  ssl_certificate_key /etc/ssl/certs/key.pem;
+  # security
+  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+  ssl_ciphers EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:!MD5;
+  ssl_prefer_server_ciphers on;
+  # performance
+  ssl_session_cache   shared:SSL:5m; # One megabyte of the cache contains about 4000 sessions
+  ssl_session_timeout 10m;
 
-    # proxy to the nodejs application
-    # client_max_body_size 64G;
+  server_tokens off;
 
-    # send the CORS headers
-    add_header 'Access-Control-Allow-Credentials' 'true';
-    add_header 'Access-Control-Allow-Origin'      'http://app.dev.local';
 
-    # set additional security headers
-    # add_header 'Cache-Control'                    'no-cache, no-store, must-revalidate';
-    # add_header 'Content-Security-Policy'          'connect-src example.com';
-    # add_header 'Expires'                          '0';
-    # add_header 'Pragma'                           'no-cache';
-    # add_header 'Strict-Transport-Security'        'max-age=31536000; includeSubDomains';
-    add_header 'X-Content-Type-Options'           'nosniff';
-    add_header 'X-Frame-Options'                  'DENY';
-    add_header 'X-XSS-Protection'                 '1; mode=block';
+  #=============#
+  # RESTFUL API #
+  #=============#
+  server {
+      listen 443 ssl;
+      listen [::]:443 ssl;
+      server_name  api.dev.local;
+
+      # # general configs
+      # keepalive_timeout    10;
+      # listen               127.0.0.1:443 ssl;
+      # server_name          api.example.com;
+
+      # # ssl configs
+      # ssl_certificate      /path/to/api.crt;
+      # ssl_certificate_key  /path/to/api.key;
+      # ssl_session_cache    shared:SSL:10m;
+      # ssl_session_timeout  10m;
+
+      # # logs paths
+      # access_log false;
+      # error_log  /path/to/error.log crit;
+
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $host;
+
+      location / {
+        proxy_pass                http://restful_api:3000;
+        proxy_http_version        1.1;
+
+        # handle OPTIONS requests
+        # @note: don't try to DRY out this "if" block, or you're gonna have a bad time.
+        # @see: http://wiki.nginx.org/IfIsEvil
+        if ($request_method = 'OPTIONS') {
+          add_header 'Access-Control-Allow-Credentials' 'true';
+          add_header 'Access-Control-Allow-Headers'     'Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,Keep-Alive,X-Requested-With,If-Modified-Since';
+          add_header 'Access-Control-Allow-Methods'     'GET, DELETE, OPTIONS, POST, PUT';
+          add_header 'Access-Control-Allow-Origin'      'https://app.dev.local';
+          add_header 'Access-Control-Max-Age'           2592000;
+          add_header 'Content-Length'                   0;
+          # add_header 'Content-Type'                     'text/plain charset=UTF-8';
+          return 204;
+        }
+
+        # proxy to the nodejs application
+        # client_max_body_size 64G;
+
+        # send the CORS headers
+        add_header 'Access-Control-Allow-Credentials' 'true';
+        add_header 'Access-Control-Allow-Origin'      'https://app.dev.local';
+
+        # set additional security headers
+        add_header 'Cache-Control'                    'no-cache, no-store, must-revalidate';
+        # add_header 'Content-Security-Policy'          'connect-src example.com';
+        # add_header 'Expires'                          '0';
+        # add_header 'Pragma'                           'no-cache';
+        # add_header 'Strict-Transport-Security'        'max-age=31536000; includeSubDomains';
+        add_header 'X-Content-Type-Options'           'nosniff';
+        add_header 'X-Frame-Options'                  'DENY';
+        add_header 'X-XSS-Protection'                 '1; mode=block';
+      }
   }
-}
 
-server {
-  listen       80;
-  server_name  app.dev.local;
+  #=================#
+  # SINGLE PAGE APP #
+  #=================#
+  server {
+      listen 443 ssl;
+      listen [::]:443 ssl;
 
-    location / {
+      server_name  app.dev.local;
+
       root  /var/www/app/;
-      index index.html =404;
-    }
+      index index.html;
 
-    # should use something like upstream @api?
-    location /api {
-      proxy_pass      http://restful_api:3000;
-      proxy_redirect  off;
-    }
-}
+      tcp_nopush on;
+
+      location / {
+        try_files $uri $uri/ =404;
+      }
+
+      # location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
+      #   expires 1M;
+      #   add_header Cache-Control  public;
+      #   add_header Pragma         public;
+      #   add_header Vary           Accept-Encoding;
+      # }
+
+      location /api {
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+
+        rewrite ^/api/?(.*) /$1 break;
+
+        proxy_pass http://restful_api:3000;
+        proxy_redirect off;
+      }
+
+      # PWA related location, do I need this?
+      location /manifest.json {
+          default_type application/x-web-app-manifest+json;
+      }
+
+  }
+
+  server {
+      listen 80 default_server;
+      listen [::]:80 default_server;
+      server_name _;
+      return 301 https://$host$request_uri;
+  }
 
 # Not working
 # # Rewrite all trafic on port 80 to 443
@@ -78,4 +166,37 @@ server {
 #   listen         80;
 #   server_name    api.dev.local;
 #   rewrite        ^ https://$server_name:8000$request_uri? permanent;
+# }
+
+
+  #=======================================#
+  # Scaling with upstream pool of servers #
+  #=======================================#
+  # upstream backend_hosts {
+  #     least_conn; # balancing algorythm
+
+  #     server host1.example.com;
+  #     server host2.example.com;
+  #     server host3.example.com;
+  # }
+
+  # server {
+  #     listen 80;
+  #     server_name example.com;
+
+  #     location /proxy-me {
+  #         proxy_pass http://backend_hosts;
+  #     }
+  # }
+
+# server {
+#     listen 80 ssl default_server;
+#     listen [::]:80 ssl default_server;
+#     server_name *.dev.local dev.local;
+
+
+#       if ($http_x_forwarded_proto != "https") {
+#         return 301 https://$host$request_uri;
+#       }
+#     return 301 https://$host$request_uri;
 # }
