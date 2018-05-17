@@ -1,5 +1,22 @@
 version: '3'
 services:
+  restful_api:
+    volumes:
+      - ./restful-api:/home/node/api
+      - /home/node/api/node_modules
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      - PORT=3000
+      - APP_URL=http://0.0.0.0:3000
+      - APP_KEY=xOrVHYdzLA3QuZyvjQFcfMG6MRVAUrdl
+      - DB_CONNECTION=sqlite
+      - DB_HOST=database
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=
+      - DB_DATABASE=restful_api
+    command: adonis serve --dev -p
   nginx:
     volumes:
       - ./nginx/nginx-app.template:/etc/nginx/conf.d/nginx-app.template
