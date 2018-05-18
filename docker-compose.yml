@@ -1,13 +1,25 @@
 version: '3'
 services:
+
   restful_api:
     container_name: restful_api
     build: ./restful-api
+    depends_on:
+      - database
     ports:
-      - "3000"
+      - 3000
     restart: unless-stopped
     environment:
       - ENV_SILENT=true
+
+  database:
+    container_name: database
+    image: mariadb:10.3.6
+    ports:
+      - 3306
+    volumes:
+      - db_data:/var/lib/mysql
+
   nginx:
     container_name: webserver
     build:
@@ -22,3 +34,7 @@ services:
       - NGINX_PORT=80
     command: /bin/sh -c "envsubst '$$NGINX_PORT' < /etc/nginx/conf.d/nginx-app.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
     restart: unless-stopped
+
+volumes:
+  db_data:
+    driver: local

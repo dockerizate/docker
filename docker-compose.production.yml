@@ -3,4 +3,3 @@ services:
   restful_api:
     environment:
       - NODE_ENV=production
-    command: node server.js
