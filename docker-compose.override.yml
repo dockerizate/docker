@@ -5,6 +5,8 @@ services:
     volumes:
       - ./restful-api:/home/node/api
       - /home/node/api/node_modules
+    ports:
+      - 3000:3000
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
@@ -17,6 +19,7 @@ services:
       - DB_USER=root
       - DB_PASSWORD=
       - DB_DATABASE=project
+      - REDIS_CONNECTION=local
     command: sh -c './wait-for-db.sh database:3306 -- adonis migration:run && adonis serve --dev -p'
 
   database:
