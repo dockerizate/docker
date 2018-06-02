@@ -160,13 +160,37 @@ gzip_types image/x-icon;
       return 301 https://$host$request_uri;
   }
 
-# Not working
-# # Rewrite all trafic on port 80 to 443
-# server {
-#   listen         80;
-#   server_name    api.dev.local;
-#   rewrite        ^ https://$server_name:8000$request_uri? permanent;
-# }
+  #==============#
+  # STATIC FILES #
+  #==============#
+  server {
+      listen 443 ssl;
+      listen [::]:443 ssl;
+      server_name  static.dev.local;
+
+      # sendfile on;
+
+      location / {
+        proxy_set_header  Host $http_host;
+        proxy_pass        http://minio:9000;
+
+        # proxy_http_version     1.1;
+        # proxy_set_header       Connection "";
+        # proxy_set_header       Authorization '';
+        # proxy_set_header       Host $http_host;
+        # proxy_hide_header      x-amz-id-2;
+        # proxy_hide_header      x-amz-request-id;
+        # proxy_hide_header      x-amz-meta-server-side-encryption;
+        # proxy_hide_header      x-amz-server-side-encryption;
+        # proxy_hide_header      Set-Cookie;
+        # proxy_ignore_headers   Set-Cookie;
+        # proxy_intercept_errors on;
+        # add_header             Cache-Control max-age=31536000;
+        # proxy_pass             http://minio:9000;
+        # proxy_buffering        off; # This will improve time-to-first-byte for client requests.
+        # health_check           uri=/minio/health/ready;
+     }
+  }
 
 
   #=======================================#
@@ -188,15 +212,3 @@ gzip_types image/x-icon;
   #         proxy_pass http://backend_hosts;
   #     }
   # }
-
-# server {
-#     listen 80 ssl default_server;
-#     listen [::]:80 ssl default_server;
-#     server_name *.dev.local dev.local;
-
-
-#       if ($http_x_forwarded_proto != "https") {
-#         return 301 https://$host$request_uri;
-#       }
-#     return 301 https://$host$request_uri;
-# }

@@ -9,6 +9,22 @@ services:
     restart: unless-stopped
     environment:
       - ENV_SILENT=true
+      - DRIVE_DISK=s3
+
+  nginx:
+    container_name: webserver
+    build:
+      context: ./
+      dockerfile: ./nginx/Dockerfile
+    depends_on:
+      - restful_api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - NGINX_PORT=80
+    command: /bin/sh -c "envsubst '$$NGINX_PORT' < /etc/nginx/conf.d/nginx-app.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    restart: unless-stopped
 
   database:
     container_name: database
@@ -25,21 +41,6 @@ services:
       - 6379
     volumes:
       - redis_data:/data
-
-  nginx:
-    container_name: webserver
-    build:
-      context: ./
-      dockerfile: ./nginx/Dockerfile
-    depends_on:
-      - restful_api
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      - NGINX_PORT=80
-    command: /bin/sh -c "envsubst '$$NGINX_PORT' < /etc/nginx/conf.d/nginx-app.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
-    restart: unless-stopped
 
 volumes:
   db_data:

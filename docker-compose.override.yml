@@ -7,6 +7,8 @@ services:
       - /home/node/api/node_modules
     ports:
       - 3000:3000
+    depends_on:
+      - minio
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
@@ -20,6 +22,12 @@ services:
       - DB_PASSWORD=
       - DB_DATABASE=project
       - REDIS_CONNECTION=local
+      - REDIS_HOST=redis
+      - S3_KEY=FAKE_S3
+      - S3_SECRET=FAKE_S3_key
+      - S3_BUCKET=app-pics
+      - S3_REGION=
+      - S3_ENDPOINT=http://minio:9000
     command: sh -c './wait-for-db.sh database:3306 -- adonis migration:run && adonis serve --dev -p'
 
   database:
@@ -29,7 +37,37 @@ services:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       - MYSQL_DATABASE=project
 
+  minio:
+    container_name: minio
+    image: minio/minio
+    ports:
+      - "9000:9000"
+    environment:
+      - MINIO_ACCESS_KEY=FAKE_S3
+      - MINIO_SECRET_KEY=FAKE_S3_key
+    volumes:
+      - minio_data:/export
+      # - /mnt/export:/export
+      # - /mnt/config:/root/.minio
+    entrypoint: sh
+    command: -c 'mkdir -p /export/app-pics && /usr/bin/minio server /export'
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 FAKE_S3 FAKE_S3_key;
+      /usr/bin/mc mb myminio/app-pics;
+      /usr/bin/mc policy download myminio/app-pics;
+      exit 0;
+      "
+
   nginx:
     volumes:
       - ./nginx/nginx-app.template:/etc/nginx/conf.d/nginx-app.template
       - ./nginx/certs:/etc/ssl/certs
+
+volumes:
+  minio_data:
