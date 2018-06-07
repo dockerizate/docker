@@ -54,6 +54,8 @@ gzip_types image/x-icon;
       listen [::]:443 ssl;
       server_name  api.dev.local;
 
+      gzip off;
+
       # # general configs
       # keepalive_timeout    10;
       # listen               127.0.0.1:443 ssl;
@@ -136,6 +138,8 @@ gzip_types image/x-icon;
       # }
 
       location /api {
+        gzip off;
+
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Host $host;
@@ -153,13 +157,6 @@ gzip_types image/x-icon;
 
   }
 
-  server {
-      listen 80 default_server;
-      listen [::]:80 default_server;
-      server_name _;
-      return 301 https://$host$request_uri;
-  }
-
   #==============#
   # STATIC FILES #
   #==============#
@@ -168,28 +165,32 @@ gzip_types image/x-icon;
       listen [::]:443 ssl;
       server_name  static.dev.local;
 
-      # sendfile on;
+      # sendfile on; # useless because of remote s3 filesystem
 
       location / {
-        proxy_set_header  Host $http_host;
-        proxy_pass        http://minio:9000;
-
-        # proxy_http_version     1.1;
-        # proxy_set_header       Connection "";
-        # proxy_set_header       Authorization '';
-        # proxy_set_header       Host $http_host;
-        # proxy_hide_header      x-amz-id-2;
-        # proxy_hide_header      x-amz-request-id;
-        # proxy_hide_header      x-amz-meta-server-side-encryption;
-        # proxy_hide_header      x-amz-server-side-encryption;
-        # proxy_hide_header      Set-Cookie;
-        # proxy_ignore_headers   Set-Cookie;
-        # proxy_intercept_errors on;
-        # add_header             Cache-Control max-age=31536000;
-        # proxy_pass             http://minio:9000;
-        # proxy_buffering        off; # This will improve time-to-first-byte for client requests.
-        # health_check           uri=/minio/health/ready;
+        proxy_http_version     1.1;
+        proxy_set_header       Connection "";
+        proxy_set_header       Authorization '';
+        proxy_set_header       Host $http_host;
+        proxy_hide_header      x-amz-id-2;
+        proxy_hide_header      x-amz-request-id;
+        proxy_hide_header      x-amz-meta-server-side-encryption;
+        proxy_hide_header      x-amz-server-side-encryption;
+        proxy_hide_header      Set-Cookie;
+        proxy_ignore_headers   Set-Cookie;
+        proxy_intercept_errors on;
+        add_header             Cache-Control max-age=31536000;
+        proxy_pass             http://minio:9000/app-pics/;
+        proxy_buffering        off; # This will improve time-to-first-byte for client requests.
+        # health_check         uri=/minio/health/ready; # unknown directive
      }
+  }
+
+  server {
+      listen 80 default_server;
+      listen [::]:80 default_server;
+      server_name _;
+      return 301 https://$host$request_uri;
   }
 
 
