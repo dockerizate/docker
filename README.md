@@ -20,4 +20,8 @@
 `docker-compose -f docker-compose.yml -f docker-compose.production.yml up -d`
 
 #### Open shell with api service as context
-docker-compose run --rm api sh
+`docker-compose run --rm api sh`
+`docker-compose exec [service] [command]`
+
+#### Open shell with api service as context
+`docker-compose exec -e PORT=3001 api adonis test`

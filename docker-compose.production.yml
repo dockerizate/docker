@@ -1,7 +1,12 @@
 version: '3'
 services:
-  restful_api:
+  api:
+    image: registry.gitlab.com/frondor/restful-api:latest
     environment:
       - NODE_ENV=production
     ports:
       - 3000
+
+  nginx:
+    environment:
+      - VIRTUAL_HOST=domain.com
